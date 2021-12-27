@@ -191,7 +191,7 @@ int benchmarks() {
   std::cout << "\nBenchmarks\n\n";
   if (internal::benchmark_1(0.0, 30)) return 1;
   if (internal::benchmark_2(1e-15, 50)) return 1;
-  if (internal::benchmark_3(1e-16, 1.4)) return 1;
+  if (internal::benchmark_3(1e-16, 2.5)) return 1;
   if (internal::benchmark_4(1e-12, 50)) return 1;
   return 0;
 }
