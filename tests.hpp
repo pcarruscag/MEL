@@ -117,7 +117,7 @@ struct Timer {
 };
 
 #define MEL_BENCHMARK(NAME, SIZE, SAMPLES, ...)                         \
-int benchmark_##NAME(const double tol) {                                \
+int benchmark_##NAME(const double tol, const double allowed_ratio) {    \
   constexpr int samples = SAMPLES;                                      \
   constexpr int n = SIZE;                                               \
   std::vector<double> x(n), y(n), f(n);                                 \
@@ -173,7 +173,7 @@ int benchmark_##NAME(const double tol) {                                \
             << "Native " << t_nat << "ms, MEL " << t_mel                \
             << "ms, Ratio " << t_mel / t_nat                            \
             << ", Max diff. " << diff << "\n\n";                        \
-  return diff > tol? 1 : 0;                                             \
+  return (diff > tol || t_mel / t_nat > allowed_ratio) ? 1 : 0;         \
 }
 
 MEL_BENCHMARK(1, 8192, 4096, x[i] + y[i])
@@ -189,10 +189,10 @@ MEL_BENCHMARK(4, 8192, 1024,
 
 int benchmarks() {
   std::cout << "\nBenchmarks\n\n";
-  if (internal::benchmark_1(0.0)) return 1;
-  if (internal::benchmark_2(1e-15)) return 1;
-  if (internal::benchmark_3(1e-16)) return 1;
-  if (internal::benchmark_4(1e-12)) return 1;
+  if (internal::benchmark_1(0.0, 23)) return 1;
+  if (internal::benchmark_2(1e-15, 50)) return 1;
+  if (internal::benchmark_3(1e-16, 1.4)) return 1;
+  if (internal::benchmark_4(1e-12, 50)) return 1;
   return 0;
 }
 
