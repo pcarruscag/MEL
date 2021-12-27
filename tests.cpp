@@ -18,6 +18,7 @@
 #include "tests.hpp"
 
 int main(int, char* []) {
+  return 1;
 
   if (mel::tests()) return 1;
 
