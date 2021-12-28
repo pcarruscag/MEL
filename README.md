@@ -3,6 +3,8 @@
 MEL (Math Expression Library) is a small (~500 loc) header-only C++11 library to parse strings into math expression objects that can be evaluated at runtime, by substituting symbols (e.g. `x`) by runtime values.
 It can be used, for example, to implement user-defined functions (UDF) in a larger code, in a self-contained way.
 
+![Unit Tests](https://github.com/pcarruscag/mel/actions/workflows/c-cpp.yml/badge.svg)
+
 ## Usage
 
 The two main functions of the library are `Parse` and `Eval`.
@@ -39,7 +41,7 @@ for (double x = 0; x <= 10; x += 0.1) {
 
 ### Default math functions and customization
 
-In the default configuration, MEL parses the four arithmetic operations (`+-*/`), power and trigonometric functions from [<cmath>](https://www.cplusplus.com/reference/cmath/), `log`, `exp`, `fabs`, `fmin`, and `fmax`.
+In the default configuration, MEL parses the four arithmetic operations (`+-*/`), power and trigonometric functions from [cmath](https://www.cplusplus.com/reference/cmath/), `log`, `exp`, `fabs`, `fmin`, and `fmax`.
 If the type used for `Eval` only supports simple arithmetic, the macro `MEL_ONLY_ARITHMETIC_OPS` can be defined before including `mel.hpp`.
 The macros `MEL_SUPPORTED_FUNCTIONS`, `MEL_FUNCTION_CODES`, and `MEL_FUNCTION_IMPLEMENTATIONS`, can be used to fully customize the supported math functions, see definitions.hpp.
 
