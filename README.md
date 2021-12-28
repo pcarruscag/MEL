@@ -1,13 +1,16 @@
 # MEL
 
+Math Expression Library
+
 ```c++
 const auto val = mel::Eval<double>("sqrt(pow(3,2) + pow(4,2)");
 ```
 
-MEL (Math Expression Library) is a small (~500 loc) header-only C++11 library to parse strings into math expression objects that can be evaluated at runtime, by substituting symbols (e.g. `x`) by runtime values.
+MEL is a small (~500 loc) header-only C++11 library to parse strings into math expression objects that can be evaluated at runtime, by substituting symbols (e.g. `x`) by runtime values.
 It can be used, for example, to implement user-defined functions (UDF) in a larger code, in a self-contained way.
 
 ![Unit Tests](https://github.com/pcarruscag/mel/actions/workflows/c-cpp.yml/badge.svg)
+![Code QL](https://github.com/pcarruscag/mel/actions/workflows/codeql-analysis.yml/badge.svg)
 
 ## Usage
 
