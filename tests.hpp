@@ -21,6 +21,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
+#include <map>
 #include <vector>
 
 #include "mel.hpp"
@@ -69,11 +70,9 @@ int tests() {
   Parse<double>(str_t("((a+b)*c-d)"), symb);
   MEL_CHECK(symb[0] == "a" && symb[1] == "b" && symb[2] == "c" && symb[3] == "d")
 
-#define MEL_CHECK_EXPR(EXPR) {                    \
-  std::vector<str_t> s;                           \
-  auto t = Parse<double>(str_t(#EXPR), s);        \
-  auto v = Eval<double>(t, [](int) {return 0;});  \
-  std::cout << v << '\n';                         \
+#define MEL_CHECK_EXPR(EXPR) {  \
+  auto v = Eval<double>(#EXPR); \
+  std::cout << v << '\n';       \
   MEL_CHECK(v == (EXPR)) }
 
   MEL_CHECK_EXPR(2 + 2)
@@ -84,15 +83,20 @@ int tests() {
   MEL_CHECK_EXPR(-3 * -4 + pow(2, 3) / sqrt(9))
   MEL_CHECK_EXPR(-3 * (-4 + pow(2, 3)) / sqrt(9))
   MEL_CHECK_EXPR(fmax(3, fmin(5, pow(-2, -2))))
+  MEL_CHECK_EXPR(sin(atan2(1, 1)) - 1/sqrt(2))
+  MEL_CHECK_EXPR(1e1 - hypot(3,4) * log(exp(2)))
 
 #undef MEL_CHECK_EXPR
 
-#define MEL_CHECK_EXPR(EXPR, ...) {                     \
-  std::vector<str_t> s;                                 \
-  const double x[] = {__VA_ARGS__};                     \
-  auto t = Parse<double>(str_t(#EXPR), s);              \
-  auto v = Eval<double>(t, [&x](int i) {return x[i];}); \
-  std::cout << v << '\n';                               \
+#define MEL_CHECK_EXPR(EXPR, ...) {                               \
+  std::vector<str_t> s;                                           \
+  const double x[] = {__VA_ARGS__};                               \
+  auto t = Parse<double>(str_t(#EXPR), s);                        \
+  auto v = Eval<double>(t, [&x](int i) {return x[i];});           \
+  std::cout << v << '\n';                                         \
+  MEL_CHECK(v == (EXPR))                                          \
+  std::map<str_t, double> m = {{"x[0]", x[0]}, {"x[1]", x[1]}};   \
+  v = Eval<double>(t, s, [&m](const str_t& k) {return m.at(k);}); \
   MEL_CHECK(v == (EXPR)) }
 
   MEL_CHECK_EXPR(x[0] / x[1] - 1, 4.5, 2.25)
@@ -179,7 +183,7 @@ int benchmark_##NAME(const double tol, const double allowed_ratio) {    \
 MEL_BENCHMARK(1, 8192, 4096, x[i] + y[i])
 MEL_BENCHMARK(2, 8192, 2048, x[i]*x[i]*y[i] + (3*y[i]*y[i] - x[i] - 1) / y[i])
 MEL_BENCHMARK(3, 8192, 1024, pow(x[i],
-                                   3.1) + exp(y[i] * -1.4e-1) / sqrt(y[i] + x[i]))
+                                 3.1) + exp(y[i] * -1.4e-1) / sqrt(y[i] + x[i]))
 MEL_BENCHMARK(4, 8192, 1024,
               (.5*x[i]+1)*(.7*x[i]-2)/(1.3*y[i]-1)-(1-.2*y[i])*(y[i]/x[i]+1))
 
@@ -190,7 +194,7 @@ MEL_BENCHMARK(4, 8192, 1024,
 int benchmarks() {
   std::cout << "\nBenchmarks\n\n";
   if (internal::benchmark_1(0.0, 30)) return 1;
-  if (internal::benchmark_2(1e-15, 50)) return 1;
+  if (internal::benchmark_2(1e-15, 55)) return 1;
   if (internal::benchmark_3(1e-16, 2.5)) return 1;
   if (internal::benchmark_4(1e-12, 50)) return 1;
   return 0;

@@ -22,6 +22,7 @@
 #include <cassert>
 #include <iterator>
 #include <sstream>
+#include <vector>
 
 #include "definitions.hpp"
 
@@ -475,6 +476,19 @@ ReturnType Eval(const TreeType& tree, const StringListType& symbols,
     return symbol_to_value(symbols[i]);
   };
   return internal::EvaluateExpressionTree<ReturnType>(tree, index_to_value);
+}
+
+/// Overload of Eval, evaluates a raw expression (string) assuming it does not
+/// contain symbols (provided for convenience).
+template<class ReturnType, class StringType>
+ReturnType Eval(const StringType& expr) {
+  std::vector<str_t> s;
+  auto f = [&](int) {
+    assert(false && "Unexpected symbol");
+    return ReturnType{};
+  };
+  return internal::EvaluateExpressionTree<ReturnType>(
+           Parse<ReturnType>(str_t(expr), s), f);
 }
 
 } // namespace mel
