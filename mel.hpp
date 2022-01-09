@@ -33,7 +33,8 @@ namespace internal {
 /// returns <true> if the conversion is successful.
 template<class StringType, class NumberType>
 bool ToNumber(const StringType& s, NumberType& n) {
-  auto ss = std::stringstream(s);
+  std::stringstream ss;
+  ss << s;
   return static_cast<bool>(ss >> n);
 }
 
@@ -429,7 +430,7 @@ ExpressionTree<NumberType> Parse(StringType expr, StringListType& symbols) {
   std::sort(tree.nodes.begin(), tree.nodes.begin() + tree.size);
 
   // Renumber children.
-  std::array<int, internal::max_tree_size> perm{};
+  std::array<int, internal::max_tree_size> perm;
   for (int i = 0; i < internal::max_tree_size; ++i) {
     perm[tree.nodes[i].index] = i;
   }
