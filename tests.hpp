@@ -30,7 +30,7 @@
 
 namespace mel {
 
-int tests() {
+inline int tests() {
   using namespace internal;
   std::cout << "\nTests\n\n";
 
@@ -61,14 +61,20 @@ int tests() {
 
   str_t t2 = "-2e-3";
   Preprocess(prep_rules, prep_subs, t2);
+  MarkScientificNotation(t2);
   MEL_CHECK(t2 == "-2e{3")
+
+  str_t t3 = "\"var 1\" * pow(\"var 0\", N) - \"var 1\"";
+  const auto strings = FindStrings(t3);
+  MEL_CHECK(strings.size() == 2)
+  MEL_CHECK(strings.count("\"var 1\"") && strings.count("\"var 0\""))
 
   auto r3 = ApplyRules(str_t("((a+b)*c-d)"));
   MEL_CHECK(r3[0] == "-" && r3[1] == "(a+b)*c" && r3[2] == "d")
 
   std::vector<str_t> symb;
-  Parse<double>(str_t("((a+b)*c-d)"), symb);
-  MEL_CHECK(symb[0] == "a" && symb[1] == "b" && symb[2] == "c" && symb[3] == "d")
+  Parse<double>(str_t("((a+b)*c - \"var 1\")"), symb);
+  MEL_CHECK(symb[0] == "a" && symb[1] == "b" && symb[2] == "c" && symb[3] == "\"var 1\"")
 
 #define MEL_CHECK_EXPR(EXPR) {  \
   auto v = Eval<double>(#EXPR); \
@@ -191,7 +197,7 @@ MEL_BENCHMARK(4, 8192, 1024,
 
 } // namespace internal
 
-int benchmarks() {
+inline int benchmarks() {
   std::cout << "\nBenchmarks\n\n";
   if (internal::benchmark_1(0.0, 30)) return 1;
   if (internal::benchmark_2(1e-15, 55)) return 1;

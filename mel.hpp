@@ -20,7 +20,9 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <functional>
 #include <iterator>
+#include <set>
 #include <sstream>
 #include <vector>
 
@@ -212,7 +214,22 @@ void Preprocess(const StringListType& rules, const StringListType& subs,
       ++subs_it;
     }
   }
-  MarkScientificNotation(expr);
+}
+
+/// Finds string symbols, within quotation marks and possibly with spaces.
+template <class StringType>
+std::set<StringType> FindStrings(const StringType& expr) {
+  std::set<StringType> strings;
+  for (auto i = expr.find('"', 0); i < expr.size();) {
+    const auto j = expr.find('"', i + 1);
+    if (j < expr.size()) {
+      strings.emplace(expr.begin() + i, expr.begin() + j + 1);
+      i = expr.find('"', j + 1);
+    } else {
+      break;
+    }
+  }
+  return strings;
 }
 
 /// Finds an applicable rule to an expression by trying all in the right order.
@@ -416,13 +433,33 @@ struct ExpressionTree {
 /// (i.e. literals).
 template<class NumberType, class StringType, class StringListType>
 ExpressionTree<NumberType> Parse(StringType expr, StringListType& symbols) {
+  StringListType orig_strings, repl_strings;
+  int i_repl = 0;
+  for (const auto& str : internal::FindStrings(expr)) {
+    const auto h = std::hash<StringType>{}(str) % 8192 + i_repl * 8192;
+    orig_strings.emplace_back(str);
+    repl_strings.emplace_back("mel_" + std::to_string(h));
+    ++i_repl;
+  }
+  internal::Preprocess(orig_strings, repl_strings, expr);
   internal::Preprocess(internal::prep_rules, internal::prep_subs, expr);
+  internal::MarkScientificNotation(expr);
+
   ExpressionTree<NumberType> tree{};
   for (int i = 0; i < internal::max_tree_size; ++i) {
     tree.nodes[i].index = static_cast<short>(i);
   }
   internal::BuildExpressionTree(expr, symbols, tree);
   tree.size++;
+
+  // Undo the string replacements.
+  for (auto& symbol : symbols) {
+    const auto it =
+        std::find(repl_strings.begin(), repl_strings.end(), symbol);
+    if (it != repl_strings.end()) {
+      symbol = orig_strings[std::distance(repl_strings.begin(), it)];
+    }
+  }
 
   // Sort nodes by their level in the tree, nodes in level i can be evaluated
   // with the values at level i+1. This is not strictly required, but it makes

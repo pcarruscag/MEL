@@ -30,12 +30,12 @@ Symbols as strings.
 #include <map>
 #include "mel.hpp"
 
-const std::string expr = "a + b*x + c*pow(x,2)";
+const std::string expr = "a + \"const b\" * x + c*pow(x,2)";
 std::vector<std::string> symbols;
 const auto tree = mel::Parse<double>(expr, symbols);
 
 // Assign values to symbols.
-std::map<std::string, double> values = {{"a", 1}, {"b", -1}, {"c", 0.5}, {"x", 0}};
+std::map<std::string, double> values = {{"a", 1}, {"\"const b\"", -1}, {"c", 0.5}, {"x", 0}};
 auto symbol_to_val = [&values](const std::string& s) {
   return values.at(s);
 };
@@ -56,11 +56,11 @@ Symbols as indices.
 #include <vector>
 #include "mel.hpp"
 
-const std::string expr = "a + b*x + c*pow(x,2)";
+const std::string expr = "a + \"const b\" * x + c*pow(x,2)";
 std::vector<std::string> symbols;
 const auto tree = mel::Parse<double>(expr, symbols);
 
-// Assign values to symbol indices, here we know the order is "a", "b", "x", "c",
+// Assign values to symbol indices, here we know the order is "a", "const b", "x", "c",
 // but in a real application this process of (efficiently) mapping symbol indices
 // to indices of recognized symbols (by the app using MEL) can be more involved.
 std::vector<double> values = {1, -1, 0, 0.5};
