@@ -33,6 +33,8 @@ using str_t = std::string;
 /// Enum representation of function (same order, must end with ",").
 #define MEL_FUNCTION_CODES SQRT, CBRT, POW, HYPOT, LOG, EXP,  \
   FABS, FMAX, FMIN, COS, SIN, TAN, ACOS, ASIN, ATAN, ATAN2,
+/// Number of arguments for each function.
+#define MEL_FUNCTION_NARGS 1, 1, 2, 2, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1, 2
 /// Handling of enum cases (call a function for each code).
 #define MEL_FUNCTION_IMPLEMENTATIONS(LEFT, RIGHT)       \
   case OpCode::SQRT: v[i] = sqrt(LEFT); break;          \
@@ -56,6 +58,7 @@ using str_t = std::string;
 // Only simple operations, no math functions.
 #define MEL_SUPPORTED_FUNCTIONS
 #define MEL_FUNCTION_CODES
+#define MEL_FUNCTION_NARGS
 #define MEL_FUNCTION_IMPLEMENTATIONS
 #endif
 
@@ -100,6 +103,8 @@ static const str_t no_ops = "+";
 static const str_t unary_ops = "-";
 /// Functions of the form f(...).
 static const str_t funcs[] = {"-", MEL_SUPPORTED_FUNCTIONS};
+/// Number of arguments for each function.
+static const int nargs[] = {1, MEL_FUNCTION_NARGS};
 
 /// Digits.
 static const str_t valid_digits = ".0123456789";

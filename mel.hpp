@@ -31,32 +31,6 @@
 namespace mel {
 namespace internal {
 
-/// Converts a string to a number of the desired type,
-/// returns <true> if the conversion is successful.
-template<class StringType, class NumberType>
-bool ToNumber(const StringType& s, NumberType& n) {
-  std::stringstream ss;
-  ss << s;
-  return static_cast<bool>(ss >> n);
-}
-
-/// Returns <true> if a string is convertible to number.
-template<class StringType>
-bool IsNumber(const StringType& s) {
-  double n{};
-  return ToNumber(s, n);
-}
-
-/// Replace all occurrences of "target" in a string.
-template<class StringType>
-void ReplaceAll(const StringType& target, const StringType& repl,
-                StringType& str) {
-  typename StringType::size_type pos = 0;
-  while ((pos = str.find(target)) != StringType::npos) {
-    str.replace(pos, target.size(), repl);
-  }
-}
-
 /// Returns <true> if parentheses are balanced. Examples:
 /// (((a+b)*c)) -> True
 /// a)*2*(c -> False
@@ -77,15 +51,43 @@ bool BalancedParentheses(const StringType& expr) {
   return nest_level == 0;
 }
 
+/// Converts a string to a number of the desired type,
+/// returns <true> if the conversion is successful.
+template<class StringType, class NumberType>
+bool ToNumber(const StringType& s, NumberType& n) {
+  std::stringstream ss;
+  ss << s;
+  return BalancedParentheses(s) && static_cast<bool>(ss >> n);
+}
+
+/// Returns <true> if a string is convertible to number.
+template<class StringType>
+bool IsNumber(const StringType& s) {
+  double n{};
+  return ToNumber(s, n);
+}
+
+/// Replace all occurrences of "target" in a string.
+template<class StringType>
+void ReplaceAll(const StringType& target, const StringType& repl,
+                StringType& str) {
+  typename StringType::size_type pos = 0;
+  while ((pos = str.find(target)) != StringType::npos) {
+    str.replace(pos, target.size(), repl);
+  }
+}
+
 /// Remove redundant parentheses around an expression. Examples:
 /// (((a+b)*c)) -> (a+b)*c
 template<class StringType>
 StringType RemoveParentheses(StringType expr) {
-  if (expr.size() > 2) {
+  if (expr.size() > 2 && BalancedParentheses(expr)) {
     auto new_expr = StringType(expr.begin()+1, expr.end()-1);
     while ((expr.front() == '(') && BalancedParentheses(new_expr)) {
       expr = new_expr;
-      new_expr = StringType(expr.begin()+1, expr.end()-1);
+      if (expr.size() > 2) {
+        new_expr = StringType(expr.begin()+1, expr.end()-1);
+      }
     }
   }
   return expr;
@@ -99,7 +101,9 @@ StringType RemoveParentheses(StringType expr) {
 template<class StringType>
 std::array<StringType, 3> SplitAtOperation(const StringType& op_list,
     const StringType& excl_chars, const StringType& expr) {
-  std::array<StringType, 3> ret;
+  std::array<StringType, 3> ret{};
+  if (expr.empty()) return ret;
+
   for (auto it = expr.end() - 1; it != expr.begin(); --it) {
     const auto rhs = StringType(expr.begin(), it+1);
     if (!BalancedParentheses(rhs)) {
@@ -121,11 +125,13 @@ std::array<StringType, 3> SplitAtOperation(const StringType& op_list,
 /// Functions are of the form f() or f(,) (for binary functions).
 /// The result is returned as (func, arg1, [arg2]). Examples:
 /// "sqrt(pow(x,2)+1)" -> ("sqrt", "pow(x,2)+1")
-template<class StringListType, class StringType>
+template<class StringListType, class IntListType, class StringType>
 std::array<StringType, 3> DetectFunction(const StringListType& func_list,
-    const StringType& expr) {
-  std::array<StringType, 3> ret;
+    const IntListType& narg_list, const StringType& expr) {
+  std::array<StringType, 3> ret{};
+  int i_func = -1;
   for (const auto& f : func_list) {
+    const auto narg = narg_list[++i_func];
     if (expr.size() <= f.size() + 1) {
       continue;
     }
@@ -137,12 +143,16 @@ std::array<StringType, 3> DetectFunction(const StringListType& func_list,
       // consider "," an operation to detect binary functions
       const auto args = SplitAtOperation(StringType(","),
                                          StringType(), inner_expr);
+      if (inner_expr.empty()) return ret;
       ret[0] = f;
-      if (args[0].empty()) {
+      if (args[0].empty() && narg == 1) {
         ret[1] = inner_expr;
-      } else {
+      } else if (!args[0].empty() && narg == 2) {
         ret[1] = args[1];
         ret[2] = args[2];
+      } else {
+        // Function used with the wrong number of arguments.
+        ret[0] = expr;
       }
       return ret;
     }
@@ -235,7 +245,7 @@ std::set<StringType> FindStrings(const StringType& expr) {
 /// Finds an applicable rule to an expression by trying all in the right order.
 template<class StringType>
 std::array<StringType, 3> ApplyRules(StringType expr) {
-  if (no_ops.find(expr.front()) != str_t::npos) {
+  if (expr.size() > 1 && no_ops.find(expr.front()) != str_t::npos) {
     expr = StringType(expr.begin()+1, expr.end());
   }
   expr = RemoveParentheses(expr);
@@ -250,11 +260,17 @@ std::array<StringType, 3> ApplyRules(StringType expr) {
   if (result[0].empty()) {
     result = SplitAtOperation(type_two_ops_non_comm, StringType(), expr);
   }
+  // The operations above are binary, thus enforce that a RHS exists.
+  if (!result[0].empty() && result[2].empty()) {
+    result[1].clear();
+    // 1+, 1*, etc. are convertible to numbers, '' are added to prevent that.
+    result[0] = '\'' + expr + '\'';
+  }
   if (result[0].empty()) {
     bool is_number = false;
     expr = UnaryOpToUnaryFunc(unary_ops, expr, is_number);
     if (!is_number) {
-      result = DetectFunction(funcs, expr);
+      result = DetectFunction(funcs, nargs, expr);
     }
   }
   if (result[0].empty()) {
@@ -309,6 +325,30 @@ void BuildExpressionTree(const StringType& expr, StringListType& symbols,
       BuildExpressionTree(result[2], symbols, tree);
     } else {
       node.child.right = -1;
+    }
+  }
+}
+
+/// Prints the nodes of a tree to a stream.
+template<class TreeType, class StringListType, class StreamType>
+void PrintTreeNodes(const TreeType& tree, const StringListType& symbols,
+                    StreamType& stream) {
+  for (int i = 0; i < tree.size; ++i) {
+    const auto& node = tree.nodes[i];
+    switch (node.type) {
+    case OpCode::NUMBER:
+      stream << i << "  " << node.val << '\n';
+      break;
+    case OpCode::SYMBOL:
+      stream << i << "  " << symbols[node.symbol_id] << '\n';
+      break;
+    case OpCode::NOOP:
+      assert(false);
+      break;
+    default:
+      const auto& op = supported_operations[static_cast<int>(node.type)];
+      stream << i << "  " << op << "  " << node.child.left << "  "
+             << node.child.right << '\n';
     }
   }
 }
@@ -493,6 +533,13 @@ template<class TreeType, class StringListType, class StreamType>
 void Print(const TreeType& tree, const StringListType& symbols,
            StreamType& stream) {
   internal::PrintExpressionTree(tree, 0, symbols, 0, stream);
+}
+
+/// Prints the nodes of a tree to a stream.
+template<class TreeType, class StringListType, class StreamType>
+void PrintNodes(const TreeType& tree, const StringListType& symbols,
+                StreamType& stream) {
+  internal::PrintTreeNodes(tree, symbols, stream);
 }
 
 /// Evaluates an expression. The functor "index_to_value" should map the index

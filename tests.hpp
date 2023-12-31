@@ -26,7 +26,12 @@
 
 #include "mel.hpp"
 
-#define MEL_CHECK(VAL) if (!(VAL)) {assert(false); return 1;}
+#define MEL_CHECK(VAL)                  \
+  if (!(VAL)) {                         \
+    std::cout << #VAL << "  FAILED\n";  \
+    assert(false);                      \
+    return 1;                           \
+  }
 
 namespace mel {
 
@@ -45,7 +50,7 @@ inline int tests() {
                             str_t("(a+b)*(a-b)"));
   MEL_CHECK(r[0] == "*" && r[1] == "(a+b)" && r[2] == "(a-b)")
 
-  auto r2 = DetectFunction(funcs, str_t("sqrt(pow(x,2)+1)"));
+  auto r2 = DetectFunction(funcs, nargs, str_t("sqrt(pow(x,2)+1)"));
   MEL_CHECK(r2[0] == "sqrt" && r2[1] == "pow(x,2)+1" && r2[2] == "")
 
   bool is_n;
@@ -76,6 +81,14 @@ inline int tests() {
   Parse<double>(str_t("((a+b)*c - \"var 1\")"), symb);
   MEL_CHECK(symb[0] == "a" && symb[1] == "b" && symb[2] == "c" && symb[3] == "\"var 1\"")
 
+  symb.clear();
+  Parse<double>(str_t("1 - 2)"), symb);
+  MEL_CHECK(symb.front() == "2)")
+
+  symb.clear();
+  Parse<double>(str_t("(1 - xx"), symb);
+  MEL_CHECK(symb.front() == "(1-xx")
+
 #define MEL_CHECK_EXPR(EXPR) {  \
   auto v = Eval<double>(#EXPR); \
   std::cout << v << '\n';       \
@@ -83,6 +96,8 @@ inline int tests() {
 
   MEL_CHECK_EXPR(2 + 2)
   MEL_CHECK_EXPR(1e-1)
+  MEL_CHECK_EXPR(2 - 2 - ((2)))
+  MEL_CHECK_EXPR(2.0 / 2.0 / 2.0 / 2.0)
   MEL_CHECK_EXPR(-2 - 2 + (1.5 / 2 + 1))
   MEL_CHECK_EXPR(-2e2 * -3e-2 + 1e1)
   MEL_CHECK_EXPR(-2e+2 * pow(-3e-2,2) + sqrt(.1E1) / -.2E-1 + exp(-0.32e0))
@@ -142,6 +157,8 @@ int benchmark_##NAME(const double tol, const double allowed_ratio) {    \
   const auto t = Parse<double>(expr, s);                                \
   std::cout << expr << '\n';                                            \
   Print(t, s, std::cout);                                               \
+  std::cout << '\n';                                                    \
+  PrintNodes(t, s, std::cout);                                          \
                                                                         \
   auto t0 = Timer();                                                    \
   auto* tree = new ExpressionTree<double>;                              \
