@@ -25,6 +25,7 @@
 #include <set>
 #include <sstream>
 #include <vector>
+#include <limits>
 
 #include "definitions.hpp"
 
@@ -501,9 +502,50 @@ ExpressionTree<NumberType> Parse(StringType expr, StringListType& symbols) {
     }
   }
 
+  // Eliminate duplicate symbols or numbers.
+  for (int i = 0; i < tree.size; ++i) {
+    auto& node_i = tree.nodes[i];
+    if (node_i.type != internal::OpCode::SYMBOL &&
+        node_i.type != internal::OpCode::NUMBER) {
+      continue;
+    }
+    for (int j = 0; j < tree.size; ++j) {
+      // For each function node check if the children use a value
+      // or symbol equivalent to node "i".
+      auto& node_j = tree.nodes[j];
+      switch (node_j.type) {
+      case internal::OpCode::NUMBER:
+      case internal::OpCode::SYMBOL:
+      case internal::OpCode::NOOP:
+        break;
+      default: {
+        auto check_child = [&](int& k) {
+          if (k < 0 || k == i) return;
+          auto& node_k = tree.nodes[k];
+          if (node_k.type != node_i.type) return;
+          // If same symbol or value.
+          if ((node_i.type == internal::OpCode::SYMBOL &&
+               node_k.symbol_id == node_i.symbol_id) ||
+              (node_i.type == internal::OpCode::NUMBER &&
+               node_k.val == node_i.val)) {
+            // Point to i instead of k, and change the type and level of
+            // k such that it will be sorted last.
+            k = i;
+            node_i.level = std::max(node_i.level, node_k.level);
+            node_k.level = std::numeric_limits<short>::max();
+            node_k.type = internal::OpCode::NOOP;
+          }
+        };
+        check_child(node_j.child.left);
+        check_child(node_j.child.right);
+        }
+      }
+    }
+  }
+
   // Sort nodes by their level in the tree, nodes in level i can be evaluated
-  // with the values at level i+1. This is not strictly required, but it makes
-  // the evaluation faster.
+  // with the values at level i+1. This makes the evaluation faster and it
+  // allows removing the eliminated nodes easily.
   std::sort(tree.nodes.begin(), tree.nodes.begin() + tree.size);
 
   // Renumber children.
@@ -511,12 +553,15 @@ ExpressionTree<NumberType> Parse(StringType expr, StringListType& symbols) {
   for (int i = 0; i < internal::max_tree_size; ++i) {
     perm[tree.nodes[i].index] = i;
   }
+  auto new_size = tree.size;
   for (int i = 0; i < tree.size; ++i) {
     auto& node = tree.nodes[i];
     switch (node.type) {
     case internal::OpCode::NUMBER:
     case internal::OpCode::SYMBOL:
+      break;
     case internal::OpCode::NOOP:
+      --new_size;
       break;
     default:
       node.child.left = perm[node.child.left];
@@ -525,6 +570,7 @@ ExpressionTree<NumberType> Parse(StringType expr, StringListType& symbols) {
       }
     }
   }
+  tree.size = new_size;
   return tree;
 }
 
