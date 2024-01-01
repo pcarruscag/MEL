@@ -338,18 +338,19 @@ void PrintTreeNodes(const TreeType& tree, const StringListType& symbols,
     const auto& node = tree.nodes[i];
     switch (node.type) {
     case OpCode::NUMBER:
-      stream << i << "  " << node.val << '\n';
+      stream << i << "  L" << node.level << "  " << node.val << '\n';
       break;
     case OpCode::SYMBOL:
-      stream << i << "  " << symbols[node.symbol_id] << '\n';
+      stream << i << "  L" << node.level << "  "
+             << symbols[node.symbol_id] << '\n';
       break;
     case OpCode::NOOP:
       assert(false);
       break;
     default:
       const auto& op = supported_operations[static_cast<int>(node.type)];
-      stream << i << "  " << op << "  " << node.child.left << "  "
-             << node.child.right << '\n';
+      stream << i << "  L" << node.level << "  " << op << "  "
+             << node.child.left << "  " << node.child.right << '\n';
     }
   }
 }
