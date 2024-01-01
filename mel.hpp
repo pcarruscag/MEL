@@ -504,7 +504,6 @@ ExpressionTree<NumberType> Parse(StringType expr, StringListType& symbols) {
   }
 
   // Eliminate duplicate symbols or numbers.
-#if 0
   for (int i = 0; i < tree.size; ++i) {
     auto& node_i = tree.nodes[i];
     if (node_i.type != internal::OpCode::SYMBOL &&
@@ -544,7 +543,7 @@ ExpressionTree<NumberType> Parse(StringType expr, StringListType& symbols) {
       }
     }
   }
-#endif
+
   // Sort nodes by their level in the tree, nodes in level i can be evaluated
   // with the values at level i+1. This makes the evaluation faster and it
   // allows removing the eliminated nodes easily.
