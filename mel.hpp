@@ -1,4 +1,4 @@
-// Copyright 2021-2023, Pedro Gomes
+// Copyright 2021-2024, Pedro Gomes
 //
 // This file is part of MEL.
 //
@@ -457,6 +457,52 @@ ReturnType EvaluateExpressionTree(const TreeType& tree,
   return v[0];
 }
 
+/// Remove common symbols and numbers by converting the nodes to NOOP.
+/// The size of the tree then needs to be adjusted after sorting these
+/// nodes to the end.
+template <class TreeType>
+void RemoveDuplicates(TreeType& tree) {
+  for (int i = 0; i < tree.size; ++i) {
+    auto& node_i = tree.nodes[i];
+    if (node_i.type != internal::OpCode::SYMBOL &&
+        node_i.type != internal::OpCode::NUMBER) {
+      continue;
+    }
+    for (int j = 0; j < tree.size; ++j) {
+      // For each function node check if the children use a value
+      // or symbol equivalent to node "i".
+      auto& node_j = tree.nodes[j];
+      switch (node_j.type) {
+      case internal::OpCode::NUMBER:
+      case internal::OpCode::SYMBOL:
+      case internal::OpCode::NOOP:
+        break;
+      default: {
+        auto check_child = [&](int& k) {
+          if (k < 0 || k == i) return;
+          auto& node_k = tree.nodes[k];
+          if (node_k.type != node_i.type) return;
+          // If same symbol or value.
+          if ((node_i.type == internal::OpCode::SYMBOL &&
+              node_k.symbol_id == node_i.symbol_id) ||
+              (node_i.type == internal::OpCode::NUMBER &&
+              node_k.val == node_i.val)) {
+            // Point to i instead of k, and change the type and level of
+            // k such that it will be sorted last.
+            k = i;
+            node_i.level = std::max(node_i.level, node_k.level);
+            node_k.level = std::numeric_limits<short>::max();
+            node_k.type = internal::OpCode::NOOP;
+          }
+        };
+        check_child(node_j.child.left);
+        check_child(node_j.child.right);
+        }
+      }
+    }
+  }
+}
+
 /// Computes the index of each node of the tree in a depth-first traversal.
 template <class TreeType, class IntListType>
 void DepthFirstIndex(const int root, const TreeType& tree,
@@ -479,6 +525,48 @@ void DepthFirstIndex(const int root, const TreeType& tree,
       DepthFirstIndex(child.left, tree, n_children, idx, index);
       if (child.right >= 0) {
         DepthFirstIndex(child.right, tree, n_children, idx, index);
+      }
+    }
+  }
+}
+
+/// When optimizing for the required size of the evaluation stack, map the
+/// destination location for nodes and source location for their children on
+/// that stack.
+template <class IntListType, class TreeType>
+void MapEvaluationStack(IntListType& stack, TreeType& tree) {
+  // Determine the position of each node on the evaluation stack.
+  // After sorting by DFI the rules for pushing and popping are:
+  // - Push if the level is greater or equal than the top of the stack.
+  // - Pop the top one or two entries if the level is lower.
+  int pos = 0;
+  for (int i = tree.size - 1; i >= 0; --i) {
+    auto& node = tree.nodes[i];
+    if (pos > 0 && node.level < tree.nodes[stack[pos - 1]].level) {
+      // Pop.
+      pos -= node.child.right >= 0 ? 2 : 1;
+    }
+    // Push.
+    stack[pos] = i;
+    node.index = static_cast<short>(pos);
+    ++pos;
+  }
+  // Determine the locations of child nodes on the stack,
+  // this avoids indirection during evaluation.
+  for (int i = 0; i < tree.size; ++i) {
+    auto& node = tree.nodes[i];
+    switch (node.type) {
+    case internal::OpCode::NUMBER:
+    case internal::OpCode::SYMBOL:
+    case internal::OpCode::NOOP:
+      break;
+    default:
+      node.child_stack.left =
+          static_cast<int8_t>(tree.nodes[node.child.left].index);
+      node.child_stack.right = static_cast<int8_t>(-1);
+      if (node.child.right >= 0) {
+        node.child_stack.right =
+            static_cast<int8_t>(tree.nodes[node.child.right].index);
       }
     }
   }
@@ -570,61 +658,22 @@ ExpressionTree<NumberType, Mode> Parse(StringType expr,
       symbol = orig_strings[std::distance(repl_strings.begin(), it)];
     }
   }
+  // Early return if we are not optimizing the evaluation.
+  if (Mode == OptimMode::NONE) return tree;
 
-  if (Mode == OptimMode::TREE_SIZE) {
-    // Eliminate duplicate symbols or numbers.
-    for (int i = 0; i < tree.size; ++i) {
-      auto& node_i = tree.nodes[i];
-      if (node_i.type != internal::OpCode::SYMBOL &&
-          node_i.type != internal::OpCode::NUMBER) {
-        continue;
-      }
-      for (int j = 0; j < tree.size; ++j) {
-        // For each function node check if the children use a value
-        // or symbol equivalent to node "i".
-        auto& node_j = tree.nodes[j];
-        switch (node_j.type) {
-        case internal::OpCode::NUMBER:
-        case internal::OpCode::SYMBOL:
-        case internal::OpCode::NOOP:
-          break;
-        default: {
-          auto check_child = [&](int& k) {
-            if (k < 0 || k == i) return;
-            auto& node_k = tree.nodes[k];
-            if (node_k.type != node_i.type) return;
-            // If same symbol or value.
-            if ((node_i.type == internal::OpCode::SYMBOL &&
-                node_k.symbol_id == node_i.symbol_id) ||
-                (node_i.type == internal::OpCode::NUMBER &&
-                node_k.val == node_i.val)) {
-              // Point to i instead of k, and change the type and level of
-              // k such that it will be sorted last.
-              k = i;
-              node_i.level = std::max(node_i.level, node_k.level);
-              node_k.level = std::numeric_limits<short>::max();
-              node_k.type = internal::OpCode::NOOP;
-            }
-          };
-          check_child(node_j.child.left);
-          check_child(node_j.child.right);
-          }
-        }
-      }
-    }
-  }
   // Sort nodes by their level in the tree, nodes in level i can be evaluated
   // with the values at level i+1. This makes the evaluation faster and it
   // allows removing the eliminated nodes easily. When minimizing the
-  // evaluation stack size sort by depth-first index instead.
-  if (Mode == OptimMode::STACK_SIZE) {
+  // evaluation stack size, sort by depth-first index instead.
+  if (Mode == OptimMode::TREE_SIZE) {
+    internal::RemoveDuplicates(tree);
+    std::sort(tree.nodes.begin(), tree.nodes.begin() + tree.size);
+  } else {
     using Node = typename ExpressionTree<NumberType, Mode>::Node;
     std::sort(tree.nodes.begin(), tree.nodes.begin() + tree.size,
               [&dfi](const Node& a, const Node& b) {
                 return dfi[a.index] < dfi[b.index];
               });
-  } else {
-    std::sort(tree.nodes.begin(), tree.nodes.begin() + tree.size);
   }
 
   // Renumber children after sorting.
@@ -649,45 +698,11 @@ ExpressionTree<NumberType, Mode> Parse(StringType expr,
       }
     }
   }
-  tree.size = new_size;
-
-  if (Mode == OptimMode::STACK_SIZE) {
-    // Determine the position of each node on the evaluation stack.
-    // After sorting by DFI the rules for pushing and popping are:
-    // - Push if the level is greater or equal than the top of the stack.
-    // - Pop the top one or two entries if the level is lower.
+  if (Mode == OptimMode::TREE_SIZE) {
+    tree.size = new_size;
+  } else {
     auto& stack = n_children;
-    int pos = 0;
-    for (int i = tree.size - 1; i >= 0; --i) {
-      auto& node = tree.nodes[i];
-      if (pos > 0 && node.level < tree.nodes[stack[pos - 1]].level) {
-        // Pop.
-        pos -= node.child.right >= 0 ? 2 : 1;
-      }
-      // Push.
-      stack[pos] = i;
-      node.index = static_cast<short>(pos);
-      ++pos;
-    }
-    // Determine the locations of child nodes on the stack,
-    // this avoids indirection during evaluation.
-    for (int i = 0; i < tree.size; ++i) {
-      auto& node = tree.nodes[i];
-      switch (node.type) {
-      case internal::OpCode::NUMBER:
-      case internal::OpCode::SYMBOL:
-      case internal::OpCode::NOOP:
-        break;
-      default:
-        node.child_stack.left =
-            static_cast<int8_t>(tree.nodes[node.child.left].index);
-        node.child_stack.right = static_cast<int8_t>(-1);
-        if (node.child.right >= 0) {
-          node.child_stack.right =
-              static_cast<int8_t>(tree.nodes[node.child.right].index);
-        }
-      }
-    }
+    internal::MapEvaluationStack(stack, tree);
   }
   return tree;
 }

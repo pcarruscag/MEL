@@ -1,4 +1,4 @@
-// Copyright 2021-2023, Pedro Gomes
+// Copyright 2021-2024, Pedro Gomes
 //
 // This file is part of MEL.
 //
@@ -229,7 +229,7 @@ inline int benchmarks() {
   if (internal::benchmark_3<OptimMode::TREE_SIZE>(1e-16, 2.5)) return 1;
   if (internal::benchmark_4<OptimMode::TREE_SIZE>(1e-12, 70)) return 1;
 
-  if (internal::benchmark_1<OptimMode::STACK_SIZE>(0.0, 30)) return 1;
+  if (internal::benchmark_1<OptimMode::STACK_SIZE>(0.0, 35)) return 1;
   if (internal::benchmark_2<OptimMode::STACK_SIZE>(1e-15, 110)) return 1;
   if (internal::benchmark_3<OptimMode::STACK_SIZE>(1e-16, 2.5)) return 1;
   if (internal::benchmark_4<OptimMode::STACK_SIZE>(1e-12, 100)) return 1;

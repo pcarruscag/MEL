@@ -1,4 +1,4 @@
-// Copyright 2021-2023, Pedro Gomes
+// Copyright 2021-2024, Pedro Gomes
 //
 // This file is part of MEL.
 //
@@ -67,7 +67,10 @@ static const str_t supported_operations[] = {
   "+", "-", "*", "/", MEL_SUPPORTED_FUNCTIONS
 };
 
-/// Optimization modes for expression trees.
+/// Optimization modes for expression trees. TREE_SIZE is the best
+/// performing mode and the default. Reducing STACK_SIZE may be
+/// required on some architectures or if the maximum tree size is
+/// increased significantly.
 enum class OptimMode {
   TREE_SIZE,  /// Reduces tree size by eliminating duplicate symbols.
   STACK_SIZE, /// Reduces stack use from N to log(N) during evaluation.
