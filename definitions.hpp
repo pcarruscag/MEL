@@ -67,6 +67,13 @@ static const str_t supported_operations[] = {
   "+", "-", "*", "/", MEL_SUPPORTED_FUNCTIONS
 };
 
+/// Optimization modes for expression trees.
+enum class OptimMode {
+  TREE_SIZE,  /// Reduces tree size by eliminating duplicate symbols.
+  STACK_SIZE, /// Reduces stack use from N to log(N) during evaluation.
+  NONE,       /// No optimization (for verification purposes).
+};
+
 namespace internal {
 
 #ifndef MEL_MAX_TREE_SIZE

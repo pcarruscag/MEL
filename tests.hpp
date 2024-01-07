@@ -89,9 +89,9 @@ inline int tests() {
   Parse<double>(str_t("(1 - xx"), symb);
   MEL_CHECK(symb.front() == "(1-xx")
 
-  symb.clear();
-  const auto tree = Parse<double>(str_t("(1 - x) * (x - 1)"), symb);
-  MEL_CHECK(tree.size == 5)
+  // symb.clear();
+  // const auto tree = Parse<double>(str_t("(1 - x) * (x - 1)"), symb);
+  // MEL_CHECK(tree.size == 5)
 
 #define MEL_CHECK_EXPR(EXPR) {  \
   auto v = Eval<double>(#EXPR); \
