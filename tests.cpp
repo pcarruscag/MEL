@@ -19,7 +19,9 @@
 
 int main(int, char* []) {
 
-  if (mel::tests()) return 1;
+  if (mel::tests<mel::OptimMode::NONE>()) return 1;
+  if (mel::tests<mel::OptimMode::TREE_SIZE>()) return 1;
+  if (mel::tests<mel::OptimMode::STACK_SIZE>()) return 1;
 
   return mel::benchmarks();
 }

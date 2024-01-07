@@ -35,11 +35,12 @@
 
 namespace mel {
 
+template <OptimMode Mode>
 inline int tests() {
   using namespace internal;
   std::cout << "\nTests\n\n";
 
-  MEL_CHECK(sizeof(ExpressionTree<double>) == (max_tree_size*2+1)*sizeof(double))
+  MEL_CHECK(sizeof(ExpressionTree<double, Mode>) == (max_tree_size*2+1)*sizeof(double))
 
   MEL_CHECK(BalancedParentheses(str_t("(((a+b)*c))")))
   MEL_CHECK(!BalancedParentheses(str_t("a)*2*(c")))
@@ -78,23 +79,25 @@ inline int tests() {
   MEL_CHECK(r3[0] == "-" && r3[1] == "(a+b)*c" && r3[2] == "d")
 
   std::vector<str_t> symb;
-  Parse<double>(str_t("((a+b)*c - \"var 1\")"), symb);
+  Parse<double, Mode>(str_t("((a+b)*c - \"var 1\")"), symb);
   MEL_CHECK(symb[0] == "a" && symb[1] == "b" && symb[2] == "c" && symb[3] == "\"var 1\"")
 
   symb.clear();
-  Parse<double>(str_t("1 - 2)"), symb);
+  Parse<double, Mode>(str_t("1 - 2)"), symb);
   MEL_CHECK(symb.front() == "2)")
 
   symb.clear();
-  Parse<double>(str_t("(1 - xx"), symb);
+  Parse<double, Mode>(str_t("(1 - xx"), symb);
   MEL_CHECK(symb.front() == "(1-xx")
 
-  // symb.clear();
-  // const auto tree = Parse<double>(str_t("(1 - x) * (x - 1)"), symb);
-  // MEL_CHECK(tree.size == 5)
+  if (Mode == OptimMode::TREE_SIZE) {
+    symb.clear();
+    const auto tree = Parse<double, Mode>(str_t("(1 - x) * (x - 1)"), symb);
+    MEL_CHECK(tree.size == 5)
+  }
 
 #define MEL_CHECK_EXPR(EXPR) {  \
-  auto v = Eval<double>(#EXPR); \
+  auto v = Eval<double, Mode>(#EXPR); \
   std::cout << v << '\n';       \
   MEL_CHECK(v == (EXPR)) }
 
@@ -116,7 +119,7 @@ inline int tests() {
 #define MEL_CHECK_EXPR(EXPR, ...) {                               \
   std::vector<str_t> s;                                           \
   const double x[] = {__VA_ARGS__};                               \
-  auto t = Parse<double>(str_t(#EXPR), s);                        \
+  auto t = Parse<double, Mode>(str_t(#EXPR), s);                        \
   auto v = Eval<double>(t, [&x](int i) {return x[i];});           \
   std::cout << v << '\n';                                         \
   MEL_CHECK(v == (EXPR))                                          \
@@ -146,6 +149,7 @@ struct Timer {
 };
 
 #define MEL_BENCHMARK(NAME, SIZE, SAMPLES, ...)                         \
+template <OptimMode Mode>                                               \
 int benchmark_##NAME(const double tol, const double allowed_ratio) {    \
   constexpr int samples = SAMPLES;                                      \
   constexpr int n = SIZE;                                               \
@@ -158,17 +162,17 @@ int benchmark_##NAME(const double tol, const double allowed_ratio) {    \
                                                                         \
   const str_t expr = #__VA_ARGS__;                                      \
   std::vector<str_t> s;                                                 \
-  const auto t = Parse<double>(expr, s);                                \
+  const auto t = Parse<double, Mode>(expr, s);                          \
   std::cout << expr << '\n';                                            \
   Print(t, s, std::cout);                                               \
   std::cout << '\n';                                                    \
   PrintNodes(t, s, std::cout);                                          \
                                                                         \
   auto t0 = Timer();                                                    \
-  auto* tree = new ExpressionTree<double>;                              \
+  auto* tree = new ExpressionTree<double, Mode>;                        \
   for (int k = 0; k < samples; ++k) {                                   \
     std::vector<str_t> s;                                               \
-    *tree = Parse<double>(expr, s);                                     \
+    *tree = Parse<double, Mode>(expr, s);                               \
   }                                                                     \
   delete tree;                                                          \
   const auto t_parse = t0.mark() / samples;                             \
@@ -220,10 +224,15 @@ MEL_BENCHMARK(4, 8192, 1024,
 
 inline int benchmarks() {
   std::cout << "\nBenchmarks\n\n";
-  if (internal::benchmark_1(0.0, 30)) return 1;
-  if (internal::benchmark_2(1e-15, 75)) return 1;
-  if (internal::benchmark_3(1e-16, 2.5)) return 1;
-  if (internal::benchmark_4(1e-12, 70)) return 1;
+  if (internal::benchmark_1<OptimMode::TREE_SIZE>(0.0, 30)) return 1;
+  if (internal::benchmark_2<OptimMode::TREE_SIZE>(1e-15, 75)) return 1;
+  if (internal::benchmark_3<OptimMode::TREE_SIZE>(1e-16, 2.5)) return 1;
+  if (internal::benchmark_4<OptimMode::TREE_SIZE>(1e-12, 70)) return 1;
+
+  if (internal::benchmark_1<OptimMode::STACK_SIZE>(0.0, 30)) return 1;
+  if (internal::benchmark_2<OptimMode::STACK_SIZE>(1e-15, 110)) return 1;
+  if (internal::benchmark_3<OptimMode::STACK_SIZE>(1e-16, 2.5)) return 1;
+  if (internal::benchmark_4<OptimMode::STACK_SIZE>(1e-12, 100)) return 1;
   return 0;
 }
 

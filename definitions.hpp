@@ -83,6 +83,9 @@ namespace internal {
 /// type double, each tree occupies ~4KB.
 static constexpr int max_tree_size = MEL_MAX_TREE_SIZE;
 
+/// Default optimization mode for expression trees.
+static constexpr OptimMode default_optim_mode = OptimMode::TREE_SIZE;
+
 /// Efficient representation of the supported operations and expression node
 /// types, must match the order of "supported_operations".
 enum class OpCode {

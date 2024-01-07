@@ -488,7 +488,7 @@ void DepthFirstIndex(const int root, const TreeType& tree,
 
 /// Type for an expression tree. The result of parsing expressions and used
 /// to evaluate them.
-template<class NumberType, OptimMode Mode = OptimMode::TREE_SIZE>
+template<class NumberType, OptimMode Mode = internal::default_optim_mode>
 struct ExpressionTree {
   using type = NumberType;
   static constexpr OptimMode mode = Mode;
@@ -534,7 +534,7 @@ struct ExpressionTree {
 /// Preprocess an expression, create an expression tree for it, and extract its
 /// symbols in the process. NumberType is the type used for stored constants
 /// (i.e. literals).
-template<class NumberType, OptimMode Mode = OptimMode::TREE_SIZE,
+template<class NumberType, OptimMode Mode = internal::default_optim_mode,
          class StringType, class StringListType>
 ExpressionTree<NumberType, Mode> Parse(StringType expr,
                                        StringListType& symbols) {
@@ -729,7 +729,7 @@ ReturnType Eval(const TreeType& tree, const StringListType& symbols,
 
 /// Overload of Eval, evaluates a raw expression (string) assuming it does not
 /// contain symbols (provided for convenience).
-template<class ReturnType, class StringType>
+template<class ReturnType, OptimMode Mode = OptimMode::NONE, class StringType>
 ReturnType Eval(const StringType& expr) {
   std::vector<str_t> s;
   auto f = [&](int) {
@@ -737,7 +737,7 @@ ReturnType Eval(const StringType& expr) {
     return ReturnType{};
   };
   return internal::EvaluateExpressionTree<ReturnType>(
-           Parse<ReturnType>(str_t(expr), s), f);
+           Parse<ReturnType, Mode>(str_t(expr), s), f);
 }
 
 } // namespace mel
