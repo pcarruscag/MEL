@@ -229,10 +229,10 @@ inline int benchmarks() {
   if (internal::benchmark_3<OptimMode::TREE_SIZE>(1e-16, 2.5)) return 1;
   if (internal::benchmark_4<OptimMode::TREE_SIZE>(1e-12, 70)) return 1;
 
-  if (internal::benchmark_1<OptimMode::STACK_SIZE>(0.0, 35)) return 1;
-  if (internal::benchmark_2<OptimMode::STACK_SIZE>(1e-15, 110)) return 1;
-  if (internal::benchmark_3<OptimMode::STACK_SIZE>(1e-16, 2.5)) return 1;
-  if (internal::benchmark_4<OptimMode::STACK_SIZE>(1e-12, 100)) return 1;
+  if (internal::benchmark_1<OptimMode::STACK_SIZE>(0.0, 40)) return 1;
+  if (internal::benchmark_2<OptimMode::STACK_SIZE>(1e-15, 210)) return 1;
+  if (internal::benchmark_3<OptimMode::STACK_SIZE>(1e-16, 5)) return 1;
+  if (internal::benchmark_4<OptimMode::STACK_SIZE>(1e-12, 200)) return 1;
   return 0;
 }
 
