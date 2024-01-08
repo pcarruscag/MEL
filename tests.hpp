@@ -225,14 +225,14 @@ MEL_BENCHMARK(4, 8192, 1024,
 inline int benchmarks() {
   std::cout << "\nBenchmarks\n\n";
   if (internal::benchmark_1<OptimMode::TREE_SIZE>(0.0, 30)) return 1;
-  if (internal::benchmark_2<OptimMode::TREE_SIZE>(1e-15, 75)) return 1;
+  if (internal::benchmark_2<OptimMode::TREE_SIZE>(1e-15, 60)) return 1;
   if (internal::benchmark_3<OptimMode::TREE_SIZE>(1e-16, 2.5)) return 1;
-  if (internal::benchmark_4<OptimMode::TREE_SIZE>(1e-12, 70)) return 1;
+  if (internal::benchmark_4<OptimMode::TREE_SIZE>(1e-12, 62)) return 1;
 
-  if (internal::benchmark_1<OptimMode::STACK_SIZE>(0.0, 40)) return 1;
-  if (internal::benchmark_2<OptimMode::STACK_SIZE>(1e-15, 210)) return 1;
-  if (internal::benchmark_3<OptimMode::STACK_SIZE>(1e-16, 5)) return 1;
-  if (internal::benchmark_4<OptimMode::STACK_SIZE>(1e-12, 200)) return 1;
+  if (internal::benchmark_1<OptimMode::STACK_SIZE>(0.0, 38)) return 1;
+  if (internal::benchmark_2<OptimMode::STACK_SIZE>(1e-15, 82)) return 1;
+  if (internal::benchmark_3<OptimMode::STACK_SIZE>(1e-16, 2.5)) return 1;
+  if (internal::benchmark_4<OptimMode::STACK_SIZE>(1e-12, 100)) return 1;
   return 0;
 }
 

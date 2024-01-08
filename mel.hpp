@@ -330,7 +330,7 @@ void BuildExpressionTree(const StringType& expr, StringListType& symbols,
       node.child.right = ++tree.size;
       tree.nodes[node.child.right].level = static_cast<short>(node.level + 1);
       BuildExpressionTree(result[2], symbols, tree, n_children);
-      n_child += n_children[node.child.left] + 1;
+      n_child += n_children[node.child.right] + 1;
     } else {
       node.child.right = -1;
     }
@@ -505,26 +505,28 @@ void RemoveDuplicates(TreeType& tree) {
 
 /// Computes the index of each node of the tree in a depth-first traversal.
 template <class TreeType, class IntListType>
-void DepthFirstIndex(const int root, const TreeType& tree,
-                     const IntListType& n_children, int& idx,
+void DepthFirstIndex(const TreeType& tree, const IntListType& n_children,
                      IntListType& index) {
-  index[root] = idx++;
-  const auto& node = tree.nodes[root];
-  switch (node.type) {
-    case OpCode::NUMBER:
-    case OpCode::SYMBOL:
-    case OpCode::NOOP:
+  index[0] = 0;
+  for (int i = 0; i < tree.size; ++i) {
+    auto& node = tree.nodes[i];
+    switch (node.type) {
+    case internal::OpCode::NUMBER:
+    case internal::OpCode::SYMBOL:
+    case internal::OpCode::NOOP:
       break;
-    default: {
+    default:
       // Take the child node with fewer nodes under it first.
       auto child = node.child;
       if (child.right >= 0 &&
           n_children[child.right] < n_children[child.left]) {
         std::swap(child.right, child.left);
       }
-      DepthFirstIndex(child.left, tree, n_children, idx, index);
+      // This is from the DFS property that to go from left to right
+      // we add the number of children under the left node plus one.
+      index[child.left] = index[i] + 1;
       if (child.right >= 0) {
-        DepthFirstIndex(child.right, tree, n_children, idx, index);
+        index[child.right] = index[i] + n_children[child.left] + 2;
       }
     }
   }
@@ -646,8 +648,7 @@ ExpressionTree<NumberType, Mode> Parse(StringType expr,
   internal::BuildExpressionTree(expr, symbols, tree, n_children);
   tree.size++;
   if (Mode == OptimMode::STACK_SIZE) {
-    int idx = 0;
-    internal::DepthFirstIndex(0, tree, n_children, idx, dfi);
+    internal::DepthFirstIndex(tree, n_children, dfi);
   }
 
   // Undo the string replacements.
